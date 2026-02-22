@@ -2,7 +2,6 @@ import uuid
 
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundError, ForbiddenError
 from app.models.note import Note
