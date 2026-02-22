@@ -41,6 +41,7 @@ export interface Note {
   content_plain: string;
   summary: string | null;
   is_favorite: boolean;
+  is_pinned: boolean;
   is_archived: boolean;
   share_token: string | null;
   notebook_id: string | null;
