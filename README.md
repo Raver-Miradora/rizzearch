@@ -89,16 +89,7 @@ npm install
 npm run dev
 ```
 
-## 📖 Documentation
-
-See [BLUEPRINT.md](BLUEPRINT.md) for the full project blueprint including:
-- System architecture & diagrams
-- Database schema & ERD
-- API endpoint reference
-- AI pipeline & prompt engineering
-- Security & deployment strategy
-
-## 👤 Author
+##  Author
 
 **Raver Miradora** — [@Raver-Miradora](https://github.com/Raver-Miradora)
 
