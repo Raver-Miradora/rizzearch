@@ -4,7 +4,7 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import NotFoundException, ForbiddenException
+from app.core.exceptions import NotFoundError, ForbiddenError
 from app.models.note import Note
 from app.schemas.note import NoteCreate, NoteUpdate
 
@@ -48,9 +48,9 @@ async def get_note_by_id(db: AsyncSession, note_id: uuid.UUID, user_id: uuid.UUI
     )
     note = result.scalar_one_or_none()
     if not note:
-        raise NotFoundException("Note not found")
+        raise NotFoundError("Note not found")
     if note.user_id != user_id:
-        raise ForbiddenException("Not your note")
+        raise ForbiddenError("Not your note")
     return note
 
 

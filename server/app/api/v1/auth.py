@@ -35,8 +35,8 @@ async def refresh_token(refresh_token: str, db: DBSession):
     """Refresh the access token using a valid refresh token."""
     payload = decode_token(refresh_token)
     if payload.get("type") != "refresh":
-        from app.core.exceptions import UnauthorizedException
-        raise UnauthorizedException("Invalid refresh token")
+        from app.core.exceptions import UnauthorizedError
+        raise UnauthorizedError("Invalid refresh token")
 
     user_id = payload.get("sub")
     user = await get_user_by_id(db, user_id)
