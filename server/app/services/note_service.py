@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ForbiddenError
@@ -94,3 +94,28 @@ async def toggle_pin(db: AsyncSession, note_id: uuid.UUID, user_id: uuid.UUID) -
     await db.commit()
     await db.refresh(note)
     return note
+
+
+async def search_notes(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    query: str,
+    skip: int = 0,
+    limit: int = 50,
+) -> list[Note]:
+    """Search notes by title or plain-text content (ILIKE)."""
+    pattern = f"%{query}%"
+    result = await db.execute(
+        select(Note)
+        .where(
+            Note.user_id == user_id,
+            or_(
+                Note.title.ilike(pattern),
+                Note.content_plain.ilike(pattern),
+            ),
+        )
+        .order_by(desc(Note.updated_at))
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(result.scalars().all())

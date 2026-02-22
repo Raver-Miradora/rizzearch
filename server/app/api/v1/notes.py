@@ -69,3 +69,16 @@ async def toggle_pin(note_id: uuid.UUID, db: DBSession, current_user: CurrentUse
     """Toggle note pin."""
     note = await note_service.toggle_pin(db, note_id, current_user.id)
     return NoteResponse.model_validate(note)
+
+
+@router.get("/search/", response_model=list[NoteResponse])
+async def search_notes(
+    db: DBSession,
+    current_user: CurrentUser,
+    q: str = Query(..., min_length=1),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+):
+    """Search notes by title or content."""
+    notes = await note_service.search_notes(db, current_user.id, q, skip, limit)
+    return [NoteResponse.model_validate(n) for n in notes]
