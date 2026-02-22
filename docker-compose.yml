@@ -1,0 +1,150 @@
+# ============================================================
+# Rizzearch — Development Docker Compose
+# ============================================================
+# Usage:
+#   docker compose up -d        # start all services
+#   docker compose logs -f      # follow logs
+#   docker compose down -v      # tear down with volumes
+# ============================================================
+
+services:
+  # ---------- PostgreSQL 16 + pgvector ----------
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: rizzearch
+      POSTGRES_PASSWORD: rizzearch_dev
+      POSTGRES_DB: rizzearch
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rizzearch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Redis 7 ----------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------- MinIO (S3-compatible local storage) ----------
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - miniodata:/data
+
+  # ---------- FastAPI Server ----------
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rizzearch:rizzearch_dev@db:5432/rizzearch
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET_NAME: rizzearch-uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    volumes:
+      - ./server:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ---------- Celery Worker ----------
+  celery-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rizzearch:rizzearch_dev@db:5432/rizzearch
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET_NAME: rizzearch-uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./server:/app
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
+
+  # ---------- Celery Beat (scheduler) ----------
+  celery-beat:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rizzearch:rizzearch_dev@db:5432/rizzearch
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./server:/app
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+
+  # ---------- Next.js Client (dev mode) ----------
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - server
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
