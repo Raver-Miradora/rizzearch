@@ -103,19 +103,24 @@ async def search_notes(
     skip: int = 0,
     limit: int = 50,
 ) -> list[Note]:
-    """Search notes by title or plain-text content (ILIKE)."""
-    pattern = f"%{query}%"
-    result = await db.execute(
+    """Search notes using PostgreSQL full-text search.
+
+    We build a tsvector over title + content_plain and match against the
+    plaintext query. An index on the tsvector is created at startup to
+    keep things speedy.
+    """
+    # use plainto_tsquery to safely convert user input
+    ts_query = func.plainto_tsquery("english", query)
+    tsv = func.to_tsvector(
+        "english", Note.title + " " + Note.content_plain
+    )
+    stmt = (
         select(Note)
-        .where(
-            Note.user_id == user_id,
-            or_(
-                Note.title.ilike(pattern),
-                Note.content_plain.ilike(pattern),
-            ),
-        )
+        .where(Note.user_id == user_id)
+        .where(tsv.match(ts_query))
         .order_by(desc(Note.updated_at))
         .offset(skip)
         .limit(limit)
     )
+    result = await db.execute(stmt)
     return list(result.scalars().all())

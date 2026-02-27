@@ -22,6 +22,25 @@ def init_sentry() -> None:
 async def lifespan(app: FastAPI):
     # Startup
     init_sentry()
+
+    # ensure full-text search index exists (notes.title + content_plain)
+    # we create it here rather than relying on migrations so local dev is easy
+    from sqlalchemy import text
+    from app.database import async_session
+
+    try:
+        async with async_session() as session:
+            await session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS idx_notes_search "
+                    "ON notes USING GIN(to_tsvector('english', title || ' ' || content_plain));"
+                )
+            )
+            await session.commit()
+    except Exception:
+        # ignore errors; index may already exist or DB not ready yet
+        pass
+
     yield
     # Shutdown
 
