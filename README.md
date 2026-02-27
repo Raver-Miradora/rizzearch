@@ -54,6 +54,21 @@ rizzearch/
 - **Docker** & Docker Compose
 - **OpenAI API Key**
 
+### Creating a Test Account
+
+No users are seeded by default. you can create one via the API or a helper
+script:
+
+```bash
+cd server
+# requires python on your PATH; see prerequisites above
+python scripts/create_test_user.py
+```
+
+That will insert `admin@rizzearch.test` / `password123` if no such user
+already exists. alternatively POST to `/api/v1/auth/register` using Postman
+or the frontend.
+
 ### Quick Start (Docker)
 
 ```bash
