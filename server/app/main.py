@@ -25,20 +25,41 @@ async def lifespan(app: FastAPI):
 
     # ensure full-text search index exists (notes.title + content_plain)
     # we create it here rather than relying on migrations so local dev is easy
-    from sqlalchemy import text
+    from sqlalchemy import select, text
     from app.database import async_session
+    from app.models.user import User
+    from app.core.security import hash_password
 
     try:
         async with async_session() as session:
+            # create search index if missing
             await session.execute(
                 text(
                     "CREATE INDEX IF NOT EXISTS idx_notes_search "
                     "ON notes USING GIN(to_tsvector('english', title || ' ' || content_plain));"
                 )
             )
+
+            # bootstrap an admin user if none exist
+            result = await session.execute(select(User).limit(1))
+            existing = result.scalar_one_or_none()
+            if not existing:
+                # pull credentials from env with sensible defaults
+                from app.config import settings
+                email = getattr(settings, "ADMIN_EMAIL", "admin@rizzearch.test")
+                password = getattr(settings, "ADMIN_PASSWORD", "password123")
+                full_name = getattr(settings, "ADMIN_NAME", "Admin User")
+                user = User(
+                    email=email,
+                    password_hash=hash_password(password),
+                    full_name=full_name,
+                )
+                session.add(user)
+                # note: we don't log here since logger may not be configured
+
             await session.commit()
     except Exception:
-        # ignore errors; index may already exist or DB not ready yet
+        # ignore errors; database might not be ready yet
         pass
 
     yield
