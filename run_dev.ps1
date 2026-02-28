@@ -20,9 +20,18 @@ Pop-Location
 
 # frontend
 Write-Host "Starting frontend..."
+if (-not (Test-Path "client")) {
+    Write-Host "ERROR: 'client' folder (frontend) not found. Please check your project structure."
+    exit 1
+}
 Push-Location client
 if (-not (Test-Path "node_modules")) {
     npm install
+}
+if (-not (Test-Path "package.json")) {
+    Write-Host "ERROR: package.json not found in client folder."
+    Pop-Location
+    exit 1
 }
 npm run dev
 Pop-Location
