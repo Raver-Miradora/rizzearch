@@ -18,7 +18,8 @@ import {
   Redo,
   Highlighter,
 } from "lucide-react";
-import { Toggle } from "@/components/ui/switch";
+// 'Toggle' component was mistakenly imported; switch only exports 'Switch'.
+// This toolbar doesn't actually use a toggle control, so we can drop the import.
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
