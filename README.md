@@ -90,19 +90,55 @@ docker compose -f docker/docker-compose.yml up -d
 
 ### Local Development
 
+#### using a local PostgreSQL instance (no Docker)
+
+1. install PostgreSQL (Postgres 16 recommended) and start the server.
+2. during the installer you will be asked to provide a password for the
+   default `postgres` superuser – choose anything secure you like (e.g.
+   `postgres123`); you'll use that in the DATABASE_URL below.
+3. create a database and user for the app:
+
+```powershell
+# windows example using psql shell
+psql -U postgres
+postgres=# CREATE DATABASE rizzearch;
+postgres=# CREATE USER rizzearch_user WITH ENCRYPTED PASSWORD 'yourpass';
+postgres=# GRANT ALL PRIVILEGES ON DATABASE rizzearch TO rizzearch_user;
+postgres=# \q
+```
+
+4. copy `.env.example` to `.env` and edit the `DATABASE_URL` line:
+
+```
+DATABASE_URL=postgresql+asyncpg://rizzearch_user:yourpass@localhost:5432/rizzearch
+```
+
+5. install Python deps and start the backend:
+
 ```bash
-# Backend
 cd server
 python -m venv .venv
 .venv/Scripts/activate   # Windows
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
+```
 
-# Frontend
+6. run the frontend as before:
+
+```bash
 cd client
 npm install
 npm run dev
 ```
+
+The first time the backend starts it will create the admin user automatically
+if no users exist. You can change the connection string above to match the
+password you set during the PostgreSQL installation.
+
+#### using Docker (alternate)
+
+…existing docker instructions…
+
 
 ##  Author
 
